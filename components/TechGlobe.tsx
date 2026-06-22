@@ -29,6 +29,15 @@ const techs: TechNode[] = [
   { name: 'Express', color: '#16a34a', position: [2, -2, 1], size: 0.3 },
 ];
 
+const orbitControlsProps = {
+  enableZoom: true,
+  enablePan: false,
+  autoRotate: true,
+  autoRotateSpeed: 0.5,
+  minDistance: 5,
+  maxDistance: 20,
+} as any;
+
 function TechNode({ node, hovered, setHovered }: { node: TechNode; hovered: string | null; setHovered: (name: string | null) => void }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const textRef = useRef<any>(null);
@@ -235,14 +244,7 @@ export default function TechGlobe() {
             <pointLight position={[10, 10, 10]} intensity={1} />
             <pointLight position={[-10, -10, -10]} intensity={0.5} color="#22c55e" />
             <Scene />
-            <OrbitControls
-              enableZoom={true}
-              enablePan={false}
-              autoRotate
-              autoRotateSpeed={0.5}
-              minDistance={5}
-              maxDistance={20}
-            />
+            <OrbitControls {...orbitControlsProps} />
           </Canvas>
 
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-slate-400 bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm">

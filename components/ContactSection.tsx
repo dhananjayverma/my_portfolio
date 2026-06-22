@@ -90,7 +90,7 @@ export default function ContactSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <div className="glass-card-strong p-8 h-full">
-              <h3 className="text-xl font-bold text-slate-800 mb-6">Let's Connect</h3>
+              <h3 className="text-xl font-bold text-slate-800 mb-6">Let&apos;s Connect</h3>
 
               <div className="space-y-4 mb-8">
                 {contactLinks.map((link, index) => (

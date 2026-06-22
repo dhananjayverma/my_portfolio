@@ -198,7 +198,7 @@ export default function HeroSection() {
             {stats.map(({ icon: Icon, value, label }) => (
               <motion.div
                 key={label}
-                className="flex min-h-[104px] items-start gap-3 rounded-lg border border-white/10 bg-white/[0.045] px-4 py-4 text-left backdrop-blur"
+                className="flex min-h-[104px] items-start gap-3 rounded-md border border-white/10 bg-white/[0.045] px-4 py-4 text-left backdrop-blur"
                 whileHover={{ y: -3, backgroundColor: 'rgba(255,255,255,0.07)' }}
               >
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-sky-300/10 text-sky-200">
@@ -259,7 +259,7 @@ export default function HeroSection() {
             <div className="absolute -left-4 top-8 hidden h-[72%] w-4 rounded-l-md bg-emerald-300/80 lg:block" />
             <div className="absolute -right-4 bottom-10 hidden h-32 w-4 rounded-r-md bg-amber-300/80 lg:block" />
 
-            <div className="relative overflow-hidden rounded-lg border border-white/12 bg-white/[0.045] shadow-2xl shadow-black/35">
+            <div className="relative overflow-hidden rounded-md border border-white/10 bg-white/[0.045] shadow-2xl shadow-black/35">
               <div className="aspect-[4/5] max-h-[580px] min-h-[330px]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -270,7 +270,7 @@ export default function HeroSection() {
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-[#071018] via-transparent to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                <div className="rounded-lg border border-white/12 bg-[#071018]/80 p-4 backdrop-blur-md">
+                <div className="rounded-md border border-white/10 bg-[#071018]/80 p-4 backdrop-blur-md">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200/80">
