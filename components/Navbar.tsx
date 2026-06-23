@@ -47,17 +47,18 @@ export default function Navbar() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.215, 0.61, 0.355, 1] }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="mx-auto max-w-[1800px] px-5 sm:px-8 lg:px-12 xl:px-20">
+        <div className="flex h-20 items-center justify-between">
           {/* Logo */}
           <motion.a
             href="#"
-            className="text-xl font-bold"
+            className="text-5xl font-black leading-none tracking-tight"
             style={{
-              background: 'linear-gradient(135deg, #38bdf8, #86efac)',
+              background: 'linear-gradient(135deg, #2563eb 0%, #06b6d4 45%, #22c55e 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 20px rgba(34,211,238,0.28))',
             }}
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
@@ -66,14 +67,14 @@ export default function Navbar() {
           </motion.a>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="relative px-4 py-2 text-sm font-medium transition-colors rounded-lg"
+                className="relative rounded-lg px-2 py-2 text-xl font-bold transition-colors"
                 style={{
-                  color: activeSection === item.href.slice(1) ? '#38bdf8' : 'rgba(203,213,225,0.85)',
+                  color: activeSection === item.href.slice(1) ? '#38bdf8' : 'rgba(226,232,240,0.86)',
                 }}
               >
                 {item.label}
@@ -91,17 +92,19 @@ export default function Navbar() {
             {/* Open to Work pill */}
             <motion.a
               href="#contact"
-              className="ml-3 flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold"
+              className="ml-1 flex items-center gap-3 rounded-full px-6 py-3 text-xl font-extrabold"
               style={{
-                background: 'rgba(34,197,94,0.12)',
-                border: '1px solid rgba(34,197,94,0.35)',
-                color: '#86efac',
+                background: 'rgba(34,197,94,0.08)',
+                border: '1px solid rgba(20,184,166,0.52)',
+                color: 'rgba(226,232,240,0.92)',
+                boxShadow: '0 0 30px rgba(16,185,129,0.18)',
               }}
               whileHover={{ scale: 1.05, background: 'rgba(34,197,94,0.2)' }}
               whileTap={{ scale: 0.95 }}
             >
               <motion.span
-                className="w-1.5 h-1.5 rounded-full bg-emerald-400"
+                className="h-3 w-3 rounded-full bg-emerald-400"
+                style={{ boxShadow: '0 0 14px rgba(52,211,153,0.95)' }}
                 animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
                 transition={{ duration: 1.4, repeat: Infinity }}
               />

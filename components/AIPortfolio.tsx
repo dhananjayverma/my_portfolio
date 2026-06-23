@@ -43,12 +43,17 @@ function getResponse(input: string): string {
 
 export default function AIPortfolio() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi! I am Dhananjay\'s AI assistant. Ask me anything about his experience, skills, or projects!' },
+    { role: 'assistant', content: "Hi! I am Dhananjay's AI assistant. Ask me anything about his experience, skills, or projects!" },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -68,6 +73,8 @@ export default function AIPortfolio() {
       setIsTyping(false);
     }, 800 + Math.random() * 500);
   };
+
+  if (!mounted) return null;
 
   return (
     <>

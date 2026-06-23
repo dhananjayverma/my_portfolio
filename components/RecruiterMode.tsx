@@ -140,14 +140,17 @@ export default function RecruiterMode() {
   return (
     <>
       <motion.button
-        className="fixed bottom-6 left-6 z-50 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-semibold shadow-lg shadow-emerald-200/40 flex items-center gap-2"
+        className="fixed bottom-6 left-6 z-50 px-4 py-2.5 rounded-full border border-emerald-500/30 bg-[#070d19]/90 backdrop-blur-md text-emerald-400 text-xs font-extrabold uppercase tracking-wider shadow-lg hover:border-emerald-400/50 hover:bg-slate-900/90 transition-all flex items-center gap-2"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         animate={{ y: [0, -3, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        <Clock className="w-4 h-4" />
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
         Recruiter Mode
       </motion.button>
 

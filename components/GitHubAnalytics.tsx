@@ -2,81 +2,115 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Github, GitCommit, GitBranch, Star, GitPullRequest, Activity, Sparkles } from 'lucide-react';
+import { Github, GitCommit, GitBranch, Star, GitFork, Activity, Sparkles, ExternalLink } from 'lucide-react';
+import type { ContributionDay, GitHubAnalyticsData, LanguageStat, RepoStat } from '@/lib/github';
 
-interface ContributionDay {
-  date: string;
-  count: number;
-  level: number;
+const CONTRIBUTION_COLORS = ['#e2e8f0', '#bae6fd', '#7dd3fc', '#38bdf8', '#0284c7'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function AnimatedStat({ value, suffix, isInView }: { value: number; suffix: string; isInView: boolean }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    const duration = 1800;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const progress = Math.min((Date.now() - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(value * eased));
+      if (progress < 1) requestAnimationFrame(animate);
+      else setCount(value);
+    };
+    animate();
+  }, [isInView, value]);
+
+  return (
+    <span className="font-mono font-bold">
+      {count.toLocaleString()}{suffix}
+    </span>
+  );
 }
 
-const generateMockContributions = (): ContributionDay[] => {
-  const days: ContributionDay[] = [];
-  const today = new Date();
-  for (let i = 364; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const count = Math.random() > 0.4 ? Math.floor(Math.random() * 12) : 0;
-    let level = 0;
-    if (count > 0) level = 1;
-    if (count > 4) level = 2;
-    if (count > 8) level = 3;
-    if (count > 10) level = 4;
-    days.push({ date: date.toISOString().split('T')[0], count, level });
-  }
-  return days;
-};
+function getMonthLabels(contributions: ContributionDay[]) {
+  if (contributions.length === 0) return [];
 
-interface Language {
-  name: string;
-  percentage: number;
-  color: string;
+  const labels: { month: string; weekIndex: number }[] = [];
+  let lastMonth = -1;
+
+  contributions.forEach((day, index) => {
+    const weekIndex = Math.floor(index / 7);
+    const month = new Date(`${day.date}T00:00:00`).getMonth();
+    if (month !== lastMonth && index % 7 === 0) {
+      labels.push({ month: MONTHS[month], weekIndex });
+      lastMonth = month;
+    }
+  });
+
+  return labels;
 }
 
-const languages: Language[] = [
-  { name: 'TypeScript', percentage: 45, color: '#0ea5e9' },
-  { name: 'JavaScript', percentage: 25, color: '#f59e0b' },
-  { name: 'CSS', percentage: 12, color: '#8b5cf6' },
-  { name: 'HTML', percentage: 8, color: '#f97316' },
-  { name: 'Python', percentage: 5, color: '#22c55e' },
-  { name: 'Shell', percentage: 5, color: '#64748b' },
-];
-
-interface Repo {
-  name: string;
-  stars: number;
-  forks: number;
-  language: string;
-  color: string;
-  description: string;
+function StatSkeleton() {
+  return (
+    <div className="glass-card-strong p-5 text-center animate-pulse">
+      <div className="w-10 h-10 rounded-xl bg-slate-200 mx-auto mb-2" />
+      <div className="h-7 bg-slate-200 rounded w-16 mx-auto mb-2" />
+      <div className="h-3 bg-slate-100 rounded w-20 mx-auto" />
+    </div>
+  );
 }
-
-const repos: Repo[] = [
-  { name: 'react-native-ev-app', stars: 120, forks: 15, language: 'TypeScript', color: '#0ea5e9', description: 'EV charging mobile app' },
-  { name: 'healthcare-dashboard', stars: 85, forks: 12, language: 'JavaScript', color: '#f59e0b', description: 'Healthcare admin panel' },
-  { name: 'lms-platform', stars: 67, forks: 8, language: 'TypeScript', color: '#0ea5e9', description: 'Learning management system' },
-  { name: 'whatsapp-automation', stars: 95, forks: 20, language: 'JavaScript', color: '#f59e0b', description: 'WhatsApp business automation' },
-  { name: 'portfolio-v3', stars: 45, forks: 5, language: 'TypeScript', color: '#0ea5e9', description: 'Personal portfolio website' },
-];
 
 export default function GitHubAnalytics() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
-  const [contributions, setContributions] = useState<ContributionDay[]>([]);
+  const [data, setData] = useState<GitHubAnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setContributions(generateMockContributions());
+    let cancelled = false;
+
+    async function loadGitHubData() {
+      try {
+        const response = await fetch('/api/github');
+        if (!response.ok) throw new Error('Failed to load GitHub data');
+
+        const analytics = (await response.json()) as GitHubAnalyticsData;
+        if (!cancelled) {
+          setData(analytics);
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) setError('Could not load live GitHub data right now.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadGitHubData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const streak = 45;
-  const totalCommits = contributions.reduce((sum, d) => sum + d.count, 0);
+  const contributions = data?.contributions ?? [];
+  const languages: LanguageStat[] = data?.languages ?? [];
+  const repos: RepoStat[] = data?.repos ?? [];
+  const monthLabels = getMonthLabels(contributions);
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const stats = data
+    ? [
+        { icon: <GitCommit className="w-5 h-5" />, label: 'Contributions', value: data.totalContributions, suffix: '', color: '#0ea5e9', animate: true },
+        { icon: <Activity className="w-5 h-5" />, label: 'Current Streak', value: data.currentStreak, suffix: ' days', color: '#22c55e', animate: false },
+        { icon: <GitBranch className="w-5 h-5" />, label: 'Repositories', value: data.publicRepos, suffix: '', color: '#f59e0b', animate: false },
+        { icon: <Star className="w-5 h-5" />, label: 'Stars Earned', value: data.totalStars, suffix: '', color: '#8b5cf6', animate: false },
+      ]
+    : [];
 
   return (
-    <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+    <section className="relative py-28 px-4 sm:px-6 lg:px-8 section-gradient-1">
       <div className="max-w-6xl mx-auto" ref={ref}>
-        {/* Header */}
         <motion.div
           className="text-center mb-20"
           initial={{ opacity: 0, y: 40 }}
@@ -98,152 +132,248 @@ export default function GitHubAnalytics() {
             GitHub Analytics
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto text-lg">
-            A snapshot of my coding activity and open source contributions.
+            Live data from{' '}
+            <a
+              href={data?.profileUrl ?? 'https://github.com/dhananjayverma'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sky-600 hover:text-sky-700 font-medium inline-flex items-center gap-1"
+            >
+              @{data?.username ?? 'dhananjayverma'}
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </p>
+          {error && (
+            <p className="text-sm text-amber-600 mt-3">{error}</p>
+          )}
         </motion.div>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {[
-            { icon: <GitCommit className="w-5 h-5" />, label: 'Total Commits', value: totalCommits.toString(), color: '#0ea5e9' },
-            { icon: <Activity className="w-5 h-5" />, label: 'Current Streak', value: `${streak} days`, color: '#22c55e' },
-            { icon: <GitBranch className="w-5 h-5" />, label: 'Repositories', value: '25+', color: '#f59e0b' },
-            { icon: <Star className="w-5 h-5" />, label: 'Stars Earned', value: '500+', color: '#8b5cf6' },
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              className="glass-card-strong p-4 text-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={{ y: -4, borderColor: `${stat.color}40` }}
-            >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2"
-                style={{ backgroundColor: `${stat.color}15`, color: stat.color }}
-              >
-                {stat.icon}
-              </div>
-              <div className="text-lg font-bold text-slate-800">{stat.value}</div>
-              <div className="text-xs text-slate-400">{stat.label}</div>
-            </motion.div>
-          ))}
+          {loading
+            ? Array.from({ length: 4 }).map((_, index) => <StatSkeleton key={index} />)
+            : stats.map((stat, index) => (
+                <motion.div
+                  key={stat.label}
+                  className="glass-card-strong p-5 text-center relative overflow-hidden group"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ y: -4, boxShadow: '0 16px 32px rgba(0,0,0,0.08)' }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                    style={{ background: `radial-gradient(circle at 50% 50%, ${stat.color}10, transparent)` }}
+                  />
+                  <div className="relative z-10">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                      style={{ backgroundColor: `${stat.color}15`, color: stat.color }}
+                    >
+                      {stat.icon}
+                    </div>
+                    <div className="text-xl sm:text-2xl mb-1" style={{ color: stat.color }}>
+                      {stat.animate ? (
+                        <AnimatedStat value={stat.value} suffix={stat.suffix} isInView={isInView} />
+                      ) : (
+                        <span className="font-mono font-bold">
+                          {stat.value.toLocaleString()}{stat.suffix}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium">{stat.label}</div>
+                  </div>
+                </motion.div>
+              ))}
         </div>
 
-        {/* Contribution Graph */}
         <motion.div
-          className="glass-card p-6 mb-8"
+          className="glass-card-strong p-6 mb-8"
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.3 }}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Github className="w-4 h-4" />
+              <Github className="w-4 h-4 text-slate-700" />
               Contribution Graph
             </h3>
-            <span className="text-xs text-slate-400">{totalCommits} contributions in the last year</span>
+            <span className="text-xs text-slate-500">
+              {loading
+                ? 'Loading contributions...'
+                : `${(data?.totalContributions ?? 0).toLocaleString()} contributions in the last year`}
+            </span>
           </div>
 
-          <div className="flex gap-1 overflow-x-auto pb-2">
-            {Array.from({ length: 53 }).map((_, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1">
-                {Array.from({ length: 7 }).map((_, dayIndex) => {
-                  const dayIndex2 = weekIndex * 7 + dayIndex;
-                  const day = contributions[dayIndex2];
-                  if (!day) return null;
-                  const opacity = day.level === 0 ? 0.1 : day.level * 0.25;
-                  return (
-                    <motion.div
-                      key={dayIndex}
-                      className="w-3 h-3 rounded-sm flex-shrink-0"
-                      style={{ backgroundColor: day.level === 0 ? '#e2e8f0' : `rgba(14, 165, 233, ${opacity})` }}
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={isInView ? { opacity: 1, scale: 1 } : {}}
-                      transition={{ duration: 0.3, delay: dayIndex2 * 0.002 }}
-                      title={`${day.date}: ${day.count} contributions`}
-                    />
-                  );
-                })}
+          {loading ? (
+            <div className="h-28 rounded-xl bg-slate-100 animate-pulse" />
+          ) : (
+            <>
+              <div className="overflow-x-auto pb-1">
+                <div className="inline-flex flex-col gap-1 min-w-max">
+                  <div className="flex gap-1 h-4 ml-8">
+                    {Array.from({ length: 53 }).map((_, weekIndex) => {
+                      const label = monthLabels.find((m) => m.weekIndex === weekIndex);
+                      return (
+                        <div key={weekIndex} className="w-[11px] flex-shrink-0 text-[10px] text-slate-500 leading-none">
+                          {label?.month ?? ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-1">
+                    <div className="flex flex-col gap-1 pr-1 justify-around text-[10px] text-slate-400 w-7 flex-shrink-0">
+                      <span>Mon</span>
+                      <span className="opacity-0">Tue</span>
+                      <span>Wed</span>
+                      <span className="opacity-0">Thu</span>
+                      <span>Fri</span>
+                      <span className="opacity-0">Sat</span>
+                      <span className="opacity-0">Sun</span>
+                    </div>
+
+                    {Array.from({ length: 53 }).map((_, weekIndex) => (
+                      <div key={weekIndex} className="flex flex-col gap-1">
+                        {Array.from({ length: 7 }).map((_, dayIndex) => {
+                          const dayIndex2 = weekIndex * 7 + dayIndex;
+                          const day = contributions[dayIndex2];
+                          if (!day) {
+                            return <div key={dayIndex} className="w-[11px] h-[11px] flex-shrink-0" />;
+                          }
+                          const level = Math.min(day.level, CONTRIBUTION_COLORS.length - 1);
+                          return (
+                            <motion.div
+                              key={dayIndex}
+                              className="w-[11px] h-[11px] rounded-sm flex-shrink-0 cursor-default"
+                              style={{ backgroundColor: CONTRIBUTION_COLORS[level] }}
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={isInView ? { opacity: 1, scale: 1 } : {}}
+                              transition={{ duration: 0.2, delay: Math.min(dayIndex2 * 0.001, 0.4) }}
+                              title={`${day.date}: ${day.count} contribution${day.count !== 1 ? 's' : ''}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <span className="text-xs text-slate-400">Less</span>
-            {[0.1, 0.25, 0.5, 0.75, 1].map((level, i) => (
-              <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: `rgba(14, 165, 233, ${level})` }} />
-            ))}
-            <span className="text-xs text-slate-400">More</span>
-          </div>
+              <div className="flex items-center justify-end gap-1.5 mt-4">
+                <span className="text-xs text-slate-500 mr-1">Less</span>
+                {CONTRIBUTION_COLORS.map((color, i) => (
+                  <div key={i} className="w-[11px] h-[11px] rounded-sm" style={{ backgroundColor: color }} />
+                ))}
+                <span className="text-xs text-slate-500 ml-1">More</span>
+              </div>
+            </>
+          )}
         </motion.div>
 
-        {/* Language Stats & Repos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Languages */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <motion.div
-            className="glass-card p-6"
+            className="glass-card-strong p-6"
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <h3 className="text-sm font-bold text-slate-800 mb-4">Languages</h3>
-            <div className="space-y-3">
-              {languages.map((lang, index) => (
-                <div key={lang.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-[#94a3b8]">{lang.name}</span>
-                    <span className="text-xs text-[#64748b]">{lang.percentage}%</span>
+            <h3 className="text-sm font-bold text-slate-800 mb-5">Languages</h3>
+            {loading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="h-8 bg-slate-100 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : languages.length > 0 ? (
+              <div className="max-h-[420px] overflow-y-auto pr-2 space-y-4 github-scroll">
+                {languages.map((lang, index) => (
+                  <div key={lang.name}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: lang.color }}
+                        />
+                        <span className="text-sm font-medium text-slate-700">{lang.name}</span>
+                      </div>
+                      <span className="text-xs font-semibold text-slate-600 tabular-nums">{lang.percentage}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: lang.color }}
+                        initial={{ width: 0 }}
+                        animate={isInView ? { width: `${lang.percentage}%` } : {}}
+                        transition={{ duration: 1, delay: 0.5 + index * 0.08 }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: lang.color }}
-                      initial={{ width: 0 }}
-                      animate={isInView ? { width: `${lang.percentage}%` } : {}}
-                      transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No public repository languages found.</p>
+            )}
           </motion.div>
 
-          {/* Top Repos */}
           <motion.div
-            className="glass-card p-6"
+            className="glass-card-strong p-6 flex flex-col"
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.5 }}
           >
-            <h3 className="text-sm font-bold text-slate-800 mb-4">Top Repositories</h3>
-            <div className="space-y-3">
-              {repos.map((repo, index) => (
-                <motion.div
-                  key={repo.name}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                  whileHover={{ x: 4 }}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.3, delay: 0.6 + index * 0.08 }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: repo.color }} />
-                      <span className="text-sm text-slate-800 font-medium truncate">{repo.name}</span>
-                    </div>
-                    <div className="text-xs text-slate-400 ml-4">{repo.description}</div>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-400 flex-shrink-0 ml-4">
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3 h-3" /> {repo.stars}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <GitPullRequest className="w-3 h-3" /> {repo.forks}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
+            <div className="flex items-center justify-between gap-2 mb-5">
+              <h3 className="text-sm font-bold text-slate-800">All Repositories</h3>
+              {!loading && repos.length > 0 && (
+                <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full tabular-nums">
+                  {repos.length} repos
+                </span>
+              )}
             </div>
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : repos.length > 0 ? (
+              <div className="max-h-[420px] overflow-y-auto pr-2 space-y-2 github-scroll">
+                {repos.map((repo) => (
+                  <a
+                    key={repo.name}
+                    href={repo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 hover:border-sky-200 hover:bg-sky-50/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: repo.color }} />
+                        <span className="text-sm font-semibold text-slate-800">{repo.name}</span>
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+                          style={{ backgroundColor: `${repo.color}15`, color: repo.color }}
+                        >
+                          {repo.language}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 ml-4 line-clamp-1">{repo.description}</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 flex-shrink-0">
+                      <span className="flex items-center gap-1 tabular-nums">
+                        <Star className="w-3.5 h-3.5" />
+                        {repo.stars}
+                      </span>
+                      <span className="flex items-center gap-1 tabular-nums">
+                        <GitFork className="w-3.5 h-3.5" />
+                        {repo.forks}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No public repositories found.</p>
+            )}
           </motion.div>
         </div>
       </div>
